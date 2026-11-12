@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Para Isabela ❤️</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+        }
+        body {
+            overflow: hidden;
+            background-color: #050510;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            touch-action: none; /* Impede a tela do celular de rolar ou dar zoom */
+        }
+        canvas {
+            display: block;
+        }
+
+        /* Mira estilo Minecraft */
+        #crosshair {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 18px;
+            height: 18px;
+            pointer-events: none;
+            z-index: 5;
+        }
+        #crosshair::before, #crosshair::after {
+            content: '';
+            position: absolute;
+            background: rgba(255, 255, 255, 0.7);
+            box-shadow: 0 0 4px #ff0055;
+        }
+        #crosshair::before { top: 8px; left: 0; width: 18px; height: 2px; }
+        #crosshair::after { top: 0; left: 8px; width: 2px; height: 18px; }
+
+        /* Tela de Pause / Início */
+        #blocker {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, rgba(25,10,35,0.85) 0%, rgba(5,2,10,0.95) 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 30;
+            backdrop-filter: blur(5px);
+            padding: 20px;
+            transition: opacity 0.4s ease;
+        }
+        #instructions {
+            text-align: center;
+            color: #fff;
+            padding: 30px 25px;
+            border: 2px solid rgba(255, 51, 102, 0.4);
+            border-radius: 20px;
+            background: rgba(20, 5, 30, 0.75);
+            box-shadow: 0 0 50px rgba(255, 0, 85, 0.3);
+            cursor: pointer;
+            max-width: 480px;
+            width: 100%;
+        }
+        h1 {
+            font-size: clamp(1.8rem, 5vw, 2.5rem);
+            margin-bottom: 12px;
+            color: #ff3366;
+            text-shadow: 0 0 15px rgba(255, 51, 102, 0.8);
+        }
+        p {
+            font-size: 1.05rem;
+            line-height: 1.5;
+            color: #ddd;
+            margin-bottom: 20px;
+        }
+        .keys {
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.08);
+            padding: 12px 20px;
+            border-radius: 12px;
+            font-size: 0.95rem;
+            color: #ff99bb;
+            border: 1px solid rgba(255, 153, 187, 0.25);
+            line-height: 1.7;
+        }
+
+        /* --- CONTROLES MOBILE --- */
+        #mobile-ui {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 15;
+        }
+        /* Área de deslizar o dedo para olhar ao redor */
+        #look-zone {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 60%;
+            height: 100%;
+            pointer-events: auto;
+        }
+        /* Joystick Analógico */
+        #joystick-zone {
+            position: absolute;
+            bottom: 35px;
+            left: 35px;
+            width: 130px;
+            height: 130px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 2px solid rgba(255, 51, 102, 0.45);
+            border-radius: 50%;
+            pointer-events: auto;
+            backdrop-filter: blur(4px);
+            box-shadow: 0 0 20px rgba(255, 0, 85, 0.2);
+        }
+        #joystick-knob {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 54px;
+            height: 54px;
+            background: radial-gradient(circle, #ff6699 0%, #ff0055 100%);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 15px #ff0055;
+            pointer-events: none;
+        }
+        /* Botão de Pular */
+        #jump-btn {
+            position: absolute;
+            bottom: 50px;
+            right: 35px;
+            width: 85px;
+            height: 85px;
+            background: rgba(255, 0, 85, 0.25);
+            border: 2px solid rgba(255, 102, 153, 0.6);
+            border-radius: 50%;
+            color: #fff;
+            font-weight: bold;
+            font-size: 0.9rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            pointer-events: auto;
+            backdrop-filter: blur(4px);
+            box-shadow: 0 0 20px rgba(255, 0, 85, 0.3);
+            transition: transform 0.1s, background 0.1s;
+        }
+        #jump-btn:active {
+            transform: scale(0.92);
+            background: rgba(255, 0, 85, 0.6);
+        }
+        /* Botão de Pause no Topo */
+        #pause-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            padding: 8px 16px;
+            background: rgba(20, 5, 30, 0.7);
+            border: 1px solid rgba(255, 51, 102, 0.5);
+            border-radius: 10px;
+            color: #ff99bb;
+            font-weight: bold;
+            font-size: 0.85rem;
+            pointer-events: auto;
+        }
+
+        #loading {
+            position: fixed;
+            bottom: 15px;
+            right: 20px;
+            color: #ff3366;
+            font-weight: bold;
+            z-index: 40;
+            font-size: 0.9rem;
+        }
+    </style>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+</head>
+<body>
+
+    <div id="crosshair"></div>
+
+    <!-- Interface Mobile -->
+    <div id="mobile-ui">
+        <div id="look-zone"></div>
+        <div id="joystick-zone">
+            <div id="joystick-knob"></div>
+        </div>
+        <div id="jump-btn">PULAR</div>
+        <div id="pause-btn">PAUSAR</div>
+    </div>
+
+    <!-- Menu Inicial -->
+    <div id="blocker">
+        <div id="instructions">
+            <h1>Surpresa para Isabela ❤️</h1>
+            <p id="start-prompt">Toque aqui para entrar no nosso mundo 3D</p>
+            <div class="keys" id="controls-guide">
+                <!-- Preenchido via JS dependendo se é Celular ou PC -->
+            </div>
+        </div>
+    </div>
+
+    <div id="loading">Carregando mundo 3D...</div>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
+        import { FontLoader } from 'three/addons/loaders/FontLoader.js';
+        import { TextGeometry } from 'three/addons/geometries/TextGeometry.js';
+
+        // Detecta se é celular ou tablet
+        const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+
+        const blocker = document.getElementById('blocker');
+        const instructions = document.getElementById('instructions');
+        const controlsGuide = document.getElementById('controls-guide');
+        const mobileUI = document.getElementById('mobile-ui');
+
+        if (isTouchDevice) {
+            controlsGuide.innerHTML = `
+                <b>Analógico Esquerdo:</b> Andar / Correr<br>
+                <b>Arrastar Lado Direito:</b> Olhar ao redor<br>
+                <b>Botão Direito:</b> Pular
+            `;
+        } else {
+            controlsGuide.innerHTML = `
+                <b>W, A, S, D:</b> Andar | <b>SHIFT:</b> Correr<br>
+                <b>ESPAÇO:</b> Pular<br>
+                <b>MOUSE:</b> Olhar ao redor | <b>ESC:</b> Pausar
+            `;
+        }
+
+        // --- 1. CONFIGURAÇÃO DA CENA E CÂMERA ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x070312);
+        scene.fog = new THREE.FogExp2(0x070312, 0.008);
+
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.rotation.order = 'YXZ'; // Importante para câmera em 1ª pessoa não entortar no celular
+        camera.position.set(0, 6, 48);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.body.appendChild(renderer.domElement);
+
+        // --- 2. CONTROLES HÍBRIDOS (PC + CELULAR) ---
+        const controls = new PointerLockControls(camera, document.body);
+        scene.add(controls.getObject());
+
+        let isGameActive = false;
+        let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false, canJump = false, isSprinting = false;
+        let joyVec = { x: 0, y: 0 }; // Vetor do Joystick Mobile
+        let yaw = 0, pitch = 0;      // Rotação da câmera no celular
+
+        // Início do Jogo (Clique ou Toque)
+        instructions.addEventListener('click', () => {
+            if (isTouchDevice) {
+                isGameActive = true;
+                blocker.style.opacity = '0';
+                setTimeout(() => { blocker.style.display = 'none'; }, 400);
+                mobileUI.style.display = 'block';
+            } else {
+                controls.lock();
+            }
+        });
+
+        controls.addEventListener('lock', () => {
+            isGameActive = true;
+            blocker.style.opacity = '0';
+            setTimeout(() => { if(controls.isLocked) blocker.style.display = 'none'; }, 400);
+        });
+
+        controls.addEventListener('unlock', () => {
+            isGameActive = false;
+            blocker.style.display = 'flex';
+            setTimeout(() => blocker.style.opacity = '1', 10);
+        });
+
+        // Botão de Pausar no Celular
+        document.getElementById('pause-btn').addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            isGameActive = false;
+            mobileUI.style.display = 'none';
+            blocker.style.display = 'flex';
+            setTimeout(() => blocker.style.opacity = '1', 10);
+        });
+
+        // --- LÓGICA MULTI-TOUCH PARA CELULAR ---
+        const joystickZone = document.getElementById('joystick-zone');
+        const joystickKnob = document.getElementById('joystick-knob');
+        const lookZone = document.getElementById('look-zone');
+        const jumpBtn = document.getElementById('jump-btn');
+
+        let joyTouchId = null;
+        let lookTouchId = null;
+        let lastLookX = 0, lastLookY = 0;
+
+        // Analógico Esquerdo (Movimento)
+        joystickZone.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const touch = e.changedTouches[0];
+            joyTouchId = touch.identifier;
+            updateJoystick(touch);
+        }, { passive: false });
+
+        joystickZone.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            for (let touch of e.changedTouches) {
+                if (touch.identifier === joyTouchId) updateJoystick(touch);
+            }
+        }, { passive: false });
+
+        const resetJoystick = (e) => {
+            for (let touch of e.changedTouches) {
+                if (touch.identifier === joyTouchId) {
+                    joyTouchId = null;
+                    joyVec.x = 0;
+                    joyVec.y = 0;
+                    joystickKnob.style.transform = `translate(-50%, -50%)`;
+                }
+            }
+        };
+        joystickZone.addEventListener('touchend', resetJoystick);
+        joystickZone.addEventListener('touchcancel', resetJoystick);
+
+        function updateJoystick(touch) {
+            const rect = joystickZone.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+            const maxRadius = rect.width / 2 - 20;
+
+            let dx = touch.clientX - centerX;
+            let dy = touch.clientY - centerY;
+            const distance = Math.hypot(dx, dy);
+
+            if (distance > maxRadius) {
+                dx = (dx / distance) * maxRadius;
+                dy = (dy / distance) * maxRadius;
+            }
+
+            joystickKnob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+
+            joyVec.x = dx / maxRadius;
+            joyVec.y = dy / maxRadius; // Negativo = para frente, Positivo = para trás
+        }
+
+        // Lado Direito da Tela (Girar a Câmera)
+        lookZone.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const touch = e.changedTouches[0];
+            lookTouchId = touch.identifier;
+            lastLookX = touch.clientX;
+            lastLookY = touch.clientY;
+        }, { passive: false });
+
+        lookZone.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            for (let touch of e.changedTouches) {
+                if (touch.identifier === lookTouchId) {
+                    const dx = touch.clientX - lastLookX;
+                    const dy = touch.clientY - lastLookY;
+                    lastLookX = touch.clientX;
+                    lastLookY = touch.clientY;
+
+                    const sensitivity = 0.0045;
+                    yaw -= dx * sensitivity;
+                    pitch -= dy * sensitivity;
+                    // Limita olhar muito para cima ou para baixo para não dar cambalhota
+                    const maxPitch = Math.PI / 2 - 0.1;
+                    pitch = Math.max(-maxPitch, Math.min(maxPitch, pitch));
+
+                    camera.rotation.y = yaw;
+                    camera.rotation.x = pitch;
+                }
+            }
+        }, { passive: false });
+
+        const endLook = (e) => {
+            for (let touch of e.changedTouches) {
+                if (touch.identifier === lookTouchId) lookTouchId = null;
+            }
+        };
+        lookZone.addEventListener('touchend', endLook);
+        lookZone.addEventListener('touchcancel', endLook);
+
+        // Botão de Pular Mobile
+        jumpBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            if (canJump) {
+                velocity.y += 45;
+                canJump = false;
+            }
+        }, { passive: false });
+
+        // --- TECLADO PARA PC ---
+        document.addEventListener('keydown', (e) => {
+            switch (e.code) {
+                case 'ArrowUp': case 'KeyW': moveForward = true; break;
+                case 'ArrowLeft': case 'KeyA': moveLeft = true; break;
+                case 'ArrowDown': case 'KeyS': moveBackward = true; break;
+                case 'ArrowRight': case 'KeyD': moveRight = true; break;
+                case 'Space': if (canJump) { velocity.y += 45; canJump = false; } break;
+                case 'ShiftLeft': case 'ShiftRight': isSprinting = true; break;
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            switch (e.code) {
+                case 'ArrowUp': case 'KeyW': moveForward = false; break;
+                case 'ArrowLeft': case 'KeyA': moveLeft = false; break;
+                case 'ArrowDown': case 'KeyS': moveBackward = false; break;
+                case 'ArrowRight': case 'KeyD': moveRight = false; break;
+                case 'ShiftLeft': case 'ShiftRight': isSprinting = false; break;
+            }
+        });
+
+        // --- 3. ILUMINAÇÃO ---
+        scene.add(new THREE.AmbientLight(0xffffff, 0.45));
+
+        const dirLight = new THREE.DirectionalLight(0xffb3c6, 1.2);
+        dirLight.position.set(30, 60, 40);
+        dirLight.castShadow = true;
+        dirLight.shadow.mapSize.width = 1024;
+        dirLight.shadow.mapSize.height = 1024;
+        const d = 50;
+        dirLight.shadow.camera.left = -d; dirLight.shadow.camera.right = d;
+        dirLight.shadow.camera.top = d; dirLight.shadow.camera.bottom = -d;
+        scene.add(dirLight);
+
+        const pointLight1 = new THREE.PointLight(0xff0055, 4, 60);
+        pointLight1.position.set(0, 12, 5);
+        scene.add(pointLight1);
+
+        // --- 4. CHÃO ESTILO BLOCOS & PEDESTAL ---
+        const canvas = document.createElement('canvas');
+        canvas.width = 256; canvas.height = 256;
+        const context = canvas.getContext('2d');
+        context.fillStyle = '#120824';
+        context.fillRect(0, 0, 256, 256);
+        context.fillStyle = '#1d0e38';
+        context.fillRect(0, 0, 128, 128);
+        context.fillRect(128, 128, 128, 128);
+        context.strokeStyle = '#2d1654';
+        context.lineWidth = 4;
+        context.strokeRect(0, 0, 256, 256);
+
+        const floorTexture = new THREE.CanvasTexture(canvas);
+        floorTexture.wrapS = THREE.RepeatWrapping;
+        floorTexture.wrapT = THREE.RepeatWrapping;
+        floorTexture.repeat.set(100, 100);
+        floorTexture.magFilter = THREE.NearestFilter;
+
+        const floor = new THREE.Mesh(
+            new THREE.PlaneGeometry(400, 400),
+            new THREE.MeshStandardMaterial({ map: floorTexture, roughness: 0.8, metalness: 0.2 })
+        );
+        floor.rotation.x = -Math.PI / 2;
+        floor.receiveShadow = true;
+        scene.add(floor);
+
+        const blockGeo = new THREE.BoxGeometry(2, 2, 2);
+        const blockMat = new THREE.MeshStandardMaterial({ color: 0x2a1b4e, roughness: 0.5 });
+        for (let x = -18; x <= 18; x += 2) {
+            for (let z = -4; z <= 4; z += 2) {
+                const block = new THREE.Mesh(blockGeo, blockMat);
+                block.position.set(x, 1, z);
+                block.receiveShadow = true;
+                block.castShadow = true;
+                scene.add(block);
+            }
+        }
+
+        // --- 5. CORAÇÕES 3D ---
+        const heartShape = new THREE.Shape();
+        heartShape.moveTo(0.5, 0.5);
+        heartShape.bezierCurveTo(0.5, 0.5, 0.4, 0, 0, 0);
+        heartShape.bezierCurveTo(-0.6, 0, -0.6, 0.7, -0.6, 0.7);
+        heartShape.bezierCurveTo(-0.6, 1.1, -0.3, 1.54, 0.5, 1.9);
+        heartShape.bezierCurveTo(1.2, 1.54, 1.6, 1.1, 1.6, 0.7);
+        heartShape.bezierCurveTo(1.6, 0.7, 1.6, 0, 1.0, 0);
+        heartShape.bezierCurveTo(0.7, 0, 0.5, 0.5, 0.5, 0.5);
+
+        const heartGeo = new THREE.ExtrudeGeometry(heartShape, {
+            depth: 0.3, bevelEnabled: true, bevelSegments: 3, steps: 1, bevelSize: 0.1, bevelThickness: 0.1
+        });
+        heartGeo.center();
+        heartGeo.rotateZ(Math.PI);
+
+        const bigHeart = new THREE.Mesh(
+            heartGeo,
+            new THREE.MeshStandardMaterial({ color: 0xff0044, emissive: 0x660011, roughness: 0.2, metalness: 0.5 })
+        );
+        bigHeart.scale.set(3.5, 3.5, 3.5);
+        bigHeart.position.set(0, 17, 0);
+        scene.add(bigHeart);
+
+        const floatingHearts = [];
+        const smallHeartMat = new THREE.MeshStandardMaterial({ color: 0xff3377, emissive: 0x330011, roughness: 0.4 });
+
+        for (let i = 0; i < 120; i++) {
+            const heart = new THREE.Mesh(heartGeo, smallHeartMat);
+            const dist = 15 + Math.random() * 110;
+            const angle = Math.random() * Math.PI * 2;
+            heart.position.set(Math.cos(angle) * dist, 3 + Math.random() * 35, Math.sin(angle) * dist);
+            const scale = 0.4 + Math.random() * 1.1;
+            heart.scale.set(scale, scale, scale);
+            heart.rotation.y = Math.random() * Math.PI;
+            scene.add(heart);
+
+            floatingHearts.push({
+                mesh: heart,
+                rotSpeed: (Math.random() - 0.5) * 0.03,
+                floatSpeed: 0.001 + Math.random() * 0.003,
+                floatOffset: Math.random() * Math.PI * 2,
+                baseY: heart.position.y
+            });
+        }
+
+        // --- 6. TEXTO 3D "Eu te amo, Isabela!" ---
+        let textMesh;
+        const fontLoader = new FontLoader();
+        fontLoader.load('https://unpkg.com/three@0.160.0/examples/fonts/helvetiker_bold.typeface.json', (font) => {
+            const textGeo = new TextGeometry('Eu te amo, Isabela!', {
+                font: font,
+                size: 3.0,
+                height: 0.9,
+                curveSegments: 10,
+                bevelEnabled: true,
+                bevelThickness: 0.15,
+                bevelSize: 0.08,
+                bevelSegments: 4
+            });
+            textGeo.center();
+
+            const textMaterials = [
+                new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.1, metalness: 0.8 }),
+                new THREE.MeshStandardMaterial({ color: 0xff0055, emissive: 0x880022, roughness: 0.3 })
+            ];
+
+            textMesh = new THREE.Mesh(textGeo, textMaterials);
+            textMesh.position.set(0, 8, 0);
+            textMesh.castShadow = true;
+            scene.add(textMesh);
+
+            document.getElementById('loading').style.display = 'none';
+        });
+
+        // --- 7. CÉU ESTRELADO ---
+        const starsGeo = new THREE.BufferGeometry();
+        const starsCount = 2000;
+        const posArray = new Float32Array(starsCount * 3);
+        const colorsArray = new Float32Array(starsCount * 3);
+
+        for(let i = 0; i < starsCount * 3; i += 3) {
+            posArray[i] = (Math.random() - 0.5) * 400;
+            posArray[i+1] = 2 + Math.random() * 150;
+            posArray[i+2] = (Math.random() - 0.5) * 400;
+            colorsArray[i] = 0.8 + Math.random() * 0.2;
+            colorsArray[i+1] = 0.5 + Math.random() * 0.5;
+            colorsArray[i+2] = 0.8 + Math.random() * 0.2;
+        }
+        starsGeo.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+        starsGeo.setAttribute('color', new THREE.BufferAttribute(colorsArray, 3));
+
+        const starMesh = new THREE.Points(
+            starsGeo,
+            new THREE.PointsMaterial({ size: 0.55, vertexColors: true, transparent: true, opacity: 0.8 })
+        );
+        scene.add(starMesh);
+
+        // --- 8. FÍSICA E ANIMAÇÃO ---
+        let prevTime = performance.now();
+        const velocity = new THREE.Vector3();
+        const direction = new THREE.Vector3();
+        const playerHeight = 6.0;
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const time = performance.now();
+            const delta = Math.min((time - prevTime) / 1000, 0.1);
+
+            if (isGameActive) {
+                velocity.x -= velocity.x * 10.0 * delta;
+                velocity.z -= velocity.z * 10.0 * delta;
+                velocity.y -= 9.8 * 12.0 * delta; // Gravidade
+
+                const speed = isSprinting ? 220.0 : 135.0;
+
+                if (isTouchDevice) {
+                    // Movimento proporcional ao analógico do celular
+                    velocity.z -= joyVec.y * speed * 1.2 * delta;
+                    velocity.x -= joyVec.x * speed * 1.2 * delta;
+                } else {
+                    // Movimento pelo teclado no PC
+                    direction.z = Number(moveForward) - Number(moveBackward);
+                    direction.x = Number(moveRight) - Number(moveLeft);
+                    direction.normalize();
+
+                    if (moveForward || moveBackward) velocity.z -= direction.z * speed * delta;
+                    if (moveLeft || moveRight) velocity.x -= direction.x * speed * delta;
+                }
+
+                controls.moveRight(-velocity.x * delta);
+                controls.moveForward(-velocity.z * delta);
+                controls.getObject().position.y += (velocity.y * delta);
+
+                if (controls.getObject().position.y < playerHeight) {
+                    velocity.y = 0;
+                    controls.getObject().position.y = playerHeight;
+                    canJump = true;
+                }
+            }
+
+            prevTime = time;
+
+            if (textMesh) {
+                textMesh.position.y = 8 + Math.sin(time * 0.002) * 0.6;
+                textMesh.rotation.y = Math.sin(time * 0.0008) * 0.12;
+            }
+
+            if (bigHeart) {
+                bigHeart.rotation.y += 0.015;
+                const pulse = 3.5 + Math.sin(time * 0.008) * 0.3;
+                bigHeart.scale.set(pulse, pulse, pulse);
+            }
+
+            floatingHearts.forEach(h => {
+                h.mesh.rotation.y += h.rotSpeed;
+                h.mesh.position.y = h.baseY + Math.sin(time * h.floatSpeed + h.floatOffset) * 1.5;
+            });
+
+            starMesh.rotation.y = time * 0.00005;
+            renderer.render(scene, camera);
+        }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        animate();
+    </script>
+</body>
+</html>
